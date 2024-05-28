@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33927.249
@@ -21,12 +21,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CrossCutting", "CrossCuttin
 		{EC4E029F-01FC-4650-8787-4C0A5DE23E13} = {EC4E029F-01FC-4650-8787-4C0A5DE23E13}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataBaseConnections", "Data.DataBaseConnections\DataBaseConnections.csproj", "{3AB3CB0C-4FA1-4C75-A7EB-95D4EF1966E5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataBaseConnections", "Data.DataBaseConnections\DataBaseConnections.csproj", "{3AB3CB0C-4FA1-4C75-A7EB-95D4EF1966E5}"
 	ProjectSection(ProjectDependencies) = postProject
 		{89567A54-D1EE-4B9D-AE16-AEFD7ECC269C} = {89567A54-D1EE-4B9D-AE16-AEFD7ECC269C}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Service", "Service\Service.csproj", "{EC4E029F-01FC-4650-8787-4C0A5DE23E13}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Service", "Service\Service.csproj", "{EC4E029F-01FC-4650-8787-4C0A5DE23E13}"
 	ProjectSection(ProjectDependencies) = postProject
 		{3AB3CB0C-4FA1-4C75-A7EB-95D4EF1966E5} = {3AB3CB0C-4FA1-4C75-A7EB-95D4EF1966E5}
 		{89567A54-D1EE-4B9D-AE16-AEFD7ECC269C} = {89567A54-D1EE-4B9D-AE16-AEFD7ECC269C}
