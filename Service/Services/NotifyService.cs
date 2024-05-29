@@ -57,7 +57,8 @@ namespace Service.Services
                     From = new MailAddress(UsingCredential.Credential, "Notify API"),
                     Subject = $"[ NO-REPLY ] {obj.Subject}",
                     Body = obj.Msg,
-                    Priority = MailPriority.Normal
+                    Priority = MailPriority.Normal,
+                    IsBodyHtml = obj.Msg!.ToUpper().StartsWith("<!DOCTYPE HTML>") || obj.Msg!.ToUpper().StartsWith("<HTML") ? true : false
                 };
                 foreach (var to in obj.MailDestinations)
                 {
