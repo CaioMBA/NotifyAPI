@@ -1,14 +1,12 @@
-﻿using Newtonsoft.Json;
+﻿using MongoDB.Bson.IO;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
-namespace System
+namespace Service.Extensions
 {
     public static class ObjectExtension
     {
@@ -23,7 +21,7 @@ namespace System
                     NamingStrategy = new CamelCaseNamingStrategy()
                 }
             };
-            return JsonConvert.SerializeObject(obj, jsonSettings);
+            return Newtonsoft.Json.JsonConvert.SerializeObject(obj, jsonSettings);
         }
 
         public static string To_UTF8Json(this Object obj)
@@ -43,6 +41,36 @@ namespace System
                 .GroupBy(x => x.Index / chunkSize)
                 .Select(x => x.Select(v => v.Value).ToList())
                 .ToList();
-        }     
+        }
+
+        public static string BsonToJson(this BsonDocument bson, DateTimeZoneHandling timeZoneHandling = DateTimeZoneHandling.Utc)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new BsonBinaryWriter(stream))
+                {
+                    BsonSerializer.Serialize(writer, typeof(BsonDocument), bson);
+                }
+
+                stream.Seek(0, SeekOrigin.Begin);
+
+                using (var reader = new Newtonsoft.Json.Bson.BsonReader(stream))
+                {
+                    var sb = new StringBuilder();
+                    var jsonWriterSettings = new JsonWriterSettings
+                    {
+                        OutputMode = JsonOutputMode.Strict
+                    };
+
+                    using (var jWriter = new JsonTextWriter(new StringWriter(sb)))
+                    {
+                        jWriter.DateTimeZoneHandling = timeZoneHandling;
+                        jWriter.WriteToken(reader, true);
+                    }
+
+                    return sb.ToString();
+                }
+            }
+        }
     }
 }

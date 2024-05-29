@@ -9,8 +9,6 @@ namespace Domain.Interfaces
 {
     public interface INotifyService
     {
-        public NotifyResponseModel DistributeNotifications(NotifyRequestModel obj);
-        public List<string>? SendMail(List<SendMailModel> ListModel);
-        public List<string>? SendPhoneMsg(List<SendPhoneMsgModel> ListModel);
+        NotifyResponseModel SendNotification(NotifyRequestModel Request);
     }
 }

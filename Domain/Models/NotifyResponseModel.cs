@@ -8,7 +8,7 @@ namespace Domain.Models
 {
     public class NotifyResponseModel
     {
-        public List<string?>? MailResponses { get; set; }
-        public List<string?>? PhoneResponses { get; set; }
+        public List<string>? MailResponses { get; set; }
+        public List<string>? PhoneResponses { get; set; }
     }
 }

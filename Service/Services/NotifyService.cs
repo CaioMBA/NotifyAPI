@@ -1,57 +1,51 @@
 ﻿using AutoMapper;
-using DataBaseConnections.OracleSqlDao;
+using Data.API;
+using Data.DataBase.SqlServerDAO;
 using Domain.Interfaces;
 using Domain.Models;
-using Newtonsoft.Json.Linq;
-using System.Net;
+using Domain.Utils;
 using System.Net.Mail;
-using Twilio.Types;
+using System.Net;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
+using Twilio.Types;
 
 namespace Service.Services
 {
     public class NotifyService : INotifyService
     {
-        private CredentialDao _dao;
+        private ApiDefaultAccess _api;
+        private CredentialDAO _dao;
         private IMapper _mapper;
-
-        public NotifyService(CredentialDao dao, IMapper mapper)
+        private Utils _utils;
+        public NotifyService(ApiDefaultAccess api, CredentialDAO dao, IMapper mapper, Utils utils)
         {
+            _api = api;
             _dao = dao;
             _mapper = mapper;
-        }
-
-        public NotifyResponseModel DistributeNotifications(NotifyRequestModel obj)
-        {
-            NotifyResponseModel notifyResponseModel = new NotifyResponseModel();
-
-            notifyResponseModel.MailResponses = new List<string?>();
-            notifyResponseModel.PhoneResponses = new List<string?>();
-
-            if (obj.Mails != null && obj.Mails.Count > 0)
-            {
-                notifyResponseModel.MailResponses = SendMail(obj.Mails);
-            }
-            if (obj.Phones != null && obj.Phones.Count > 0)
-            {
-                notifyResponseModel.PhoneResponses = SendPhoneMsg(obj.Phones);
-            }
-
-            return notifyResponseModel;
-
+            _utils = utils;
         }
 
 
-        public List<string?>? SendMail(List<SendMailModel> ListModel)
+        #region Raw
+        private List<string> SendMail(List<SendMailModel> ListModel)
         {
             var Credentials = _dao.GetCredentials();
 
-            var UsingCredentiaal = (from c in Credentials
-                                    where c.ACTIVE == 1
-                                    & c.TYPE == "MAIL"
-                                    orderby c.NOTIFYCREDENTIALID
-                                    select c).FirstOrDefault();
+            if (Credentials == null || Credentials.Count == 0)
+            {
+                throw new Exception("Não foi possível encontrar nenhuma credencial");
+            }
+
+            CredentialInfoModel? UsingCredential = (from c in Credentials
+                                                    where c.Active == true
+                                                    & c.Type == "MAIL"
+                                                    orderby c.CredentialID
+                                                    select c).FirstOrDefault();
+            if (UsingCredential == null)
+            {
+                throw new Exception("Não foi possível encontrar credenciais de e-mail ativas");
+            }
 
             List<string>? Response = new List<string>();
             List<int> Ports = new List<int>() { 587, 465 };
@@ -60,8 +54,8 @@ namespace Service.Services
             {
                 MailMessage MailMsg = new MailMessage()
                 {
-                    From = new MailAddress(UsingCredentiaal.CREDENTIAL, "Notify API"),
-                    Subject = $"[NO-REPLY] {obj.Subject}",
+                    From = new MailAddress(UsingCredential.Credential, "Notify API"),
+                    Subject = $"[ NO-REPLY ] {obj.Subject}",
                     Body = obj.Msg,
                     Priority = MailPriority.Normal
                 };
@@ -74,11 +68,11 @@ namespace Service.Services
                 {
                     try
                     {
-                        using (SmtpClient MailClient = new SmtpClient(UsingCredentiaal.PROTOCOL, port))
+                        using (SmtpClient MailClient = new SmtpClient(UsingCredential.Protocol, port))
                         {
                             MailClient.UseDefaultCredentials = false;
                             MailClient.EnableSsl = true;
-                            MailClient.Credentials = new NetworkCredential(UsingCredentiaal.CREDENTIAL, UsingCredentiaal.PASSWORD);
+                            MailClient.Credentials = new NetworkCredential(UsingCredential.Credential, UsingCredential.SecretKey);
                             MailClient.Send(MailMsg);
                         }
                         Response.Add("E-mail enviado com sucesso");
@@ -91,93 +85,88 @@ namespace Service.Services
                 }
             }
 
-
             return Response;
         }
 
-        public List<string?>? SendPhoneMsg(List<SendPhoneMsgModel> ListModel)
+        private List<string> SendPhoneMsg(List<SendPhoneMsgModel> ListModel)
         {
             var Credentials = _dao.GetCredentials();
 
-            var UsingCredential = (from c in Credentials
-                                   where c.ACTIVE == 1
-                                   & c.TYPE == "TWILIO"
-                                   orderby c.NOTIFYCREDENTIALID
-                                   select c).FirstOrDefault();
+            if (Credentials == null || Credentials.Count == 0)
+            {
+                throw new Exception("Não foi possível encontrar nenhuma credencial");
+            }
 
-            List<string> Response = new List<string>();
+            var UsingCredential = (from c in Credentials
+                                   where c.Active == true
+                                   & c.Type == "TWILIO"
+                                   orderby c.CredentialID
+                                   select c).FirstOrDefault();
+            if (UsingCredential == null)
+            {
+                throw new Exception("Não foi possível encontrar credenciais de e-mail ativas");
+            }
+
+            TwilioClient.Init(UsingCredential.Credential, UsingCredential.SecretKey);
+
+            List<string> Responses = new List<string>();
 
             foreach (var obj in ListModel)
             {
-                Response = Response.Concat(SendSMSorWhatsApp(UsingCredential, obj)).ToList();
-
-            }
-            if (Response.Count == 0)
-            {
-                Response.Add("Função não implementada ainda!");
-            }
-            return Response;
-
-        }
-
-        public List<string?>? SendSMSorWhatsApp(CredentialsModel? Credential, SendPhoneMsgModel MsgModel)
-        {
-            List<string?> Responses = new List<string?>();
-
-            var accountSid = Credential.CREDENTIAL;
-            var authToken = Credential.PASSWORD;
-            TwilioClient.Init(accountSid, authToken);
-
-            foreach (var phone in MsgModel.Phones)
-            {
-                CreateMessageOptions MessageOption = new CreateMessageOptions("");
-
-                switch (MsgModel.Type)
+                foreach (string? phone in obj.Phones)
                 {
-                    case "WHATSAPP":
-                        MessageOption = new CreateMessageOptions(new PhoneNumber($"whatsapp:{phone}"));
-                        MessageOption.From = new PhoneNumber("whatsapp:+14155238886");
-                        break;
-                    case "SMS":
-                        MessageOption = new CreateMessageOptions(new PhoneNumber(phone));
-                        MessageOption.From = new PhoneNumber("+18159499432");
-                        break;
-                    default:
-                        throw new Exception($"Type: |{MsgModel.Type}| Não implementado");
+                    string FromNumber = "+18159499432";
+                    string ToNumber = phone;
+                    if (obj.Type == "WHATSAPP")
+                    {
+                        FromNumber = "whatsapp:+14155238886";
+                        ToNumber = $"whatsapp:{phone}";
+                    }
+
+                    CreateMessageOptions options = new CreateMessageOptions(new PhoneNumber(ToNumber))
+                    {
+                        From = new PhoneNumber(FromNumber),
+                        Body = obj.Msg
+                    };
+                    MessageResource Msg = MessageResource.Create(options);
+                    Responses.Add(Msg.Body);
                 }
-
-                MessageOption.Body = $"{MsgModel.Name}, {MsgModel.Msg}";
-
-                MessageResource message = MessageResource.Create(MessageOption);
-
-                Responses.Add(message.Body);
             }
 
             return Responses;
         }
+        #endregion
 
-        /* TELEGRAM
-        
-        public string? SendTelegramMsg(string? token,List<string>? ChatIds,string? Msg)
+        public NotifyResponseModel SendNotification(NotifyRequestModel Request)
         {
-            var TelegramC = new TelegramBotClient(token);
+            NotifyResponseModel Response = new NotifyResponseModel();
 
-            List<string> Response = new List<string>();
-
-            foreach(var chat in ChatIds)
+            if (Request.Mails != null && Request.Mails.Count > 0)
             {
                 try
                 {
-                    TelegramC.SendTextMessageAsync(chatId: chat, text: Msg);
+                    Response.MailResponses = SendMail(Request.Mails);
                 }
                 catch (Exception ex)
                 {
-                    Response.Add($"Erro ao tentar enviar msg ao chat: {ex.Message}");
+                    Response.MailResponses = new List<string>() { ex.Message };
                 }
-                
             }
-            
-            return null;
-        }*/
+
+            if (Request.Phones != null && Request.Phones.Count > 0)
+            {
+                try
+                {
+                    Response.PhoneResponses = SendPhoneMsg(Request.Phones);
+                }
+                catch (Exception ex)
+                {
+                    Response.PhoneResponses = new List<string>() { ex.Message };
+                }
+            }
+
+            return Response;
+        }
+
     }
 }
