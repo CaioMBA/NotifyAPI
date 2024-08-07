@@ -9,6 +9,7 @@ using System.Net;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
+using Service.Extensions;
 
 namespace Service.Services
 {
@@ -60,6 +61,17 @@ namespace Service.Services
                     Priority = MailPriority.Normal,
                     IsBodyHtml = obj.Msg!.ToUpper().StartsWith("<!DOCTYPE HTML>") || obj.Msg!.ToUpper().StartsWith("<HTML") ? true : false
                 };
+
+                if (obj.Attachments != null)
+                {
+                    foreach (var attachment in obj.Attachments)
+                    {
+                        MailMsg.Attachments.Add(
+                            attachment.Base64File.Base64StringToMailAttachment(attachment.FileName)
+                            );
+                    }
+                }
+
                 foreach (var to in obj.MailDestinations)
                 {
                     MailMsg.To.Add(new MailAddress(to));

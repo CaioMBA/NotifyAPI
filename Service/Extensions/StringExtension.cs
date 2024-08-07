@@ -1,16 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using Newtonsoft.Json.Linq;
+using System.Net.Mail;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Security.Cryptography;
-using System.Text.Json.Nodes;
-using System.Text.Json;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson;
 
 namespace Service.Extensions
 {
@@ -165,6 +160,20 @@ namespace Service.Extensions
             s = s.Trim();
             return (s.Length % 4 == 0) && Regex.IsMatch(s, @"^[a-zA-Z0-9\+/]*={0,3}$", RegexOptions.None);
 
+        }
+
+        public static Attachment Base64StringToMailAttachment(this string base64String, string fileName)
+        {
+            if (String.IsNullOrEmpty(base64String) || !base64String.IsBase64String())
+            {
+                throw new Exception("Invalid Base64 String");
+            }
+
+            byte[] bytes = Convert.FromBase64String(base64String);
+
+            MemoryStream stream = new MemoryStream(bytes);
+
+            return new Attachment(stream, fileName);
         }
     }
 }

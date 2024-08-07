@@ -18,6 +18,12 @@ namespace Domain.Models
         public string? Subject { get; set; }
 
         public string? Msg { get; set; }
+        public List<Attachment>? Attachments { get; set; }
+    }
+    public class Attachment
+    {
+        public required string FileName { get; set; }
+        public required string Base64File { get; set; }
     }
     public class SendPhoneMsgModel
     {
